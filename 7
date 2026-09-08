@@ -1,0 +1,64 @@
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <termios.h>
+#include <unistd.h>
+
+// Save original temrinal state
+struct termios orig_termios;
+
+typedef struct {
+    char *chars;
+    size_t len;
+} b_row;
+
+typedef struct {
+    b_row *rows;
+    size_t rows_count;
+    size_t def_row_size;
+    int8_t cursor_x, cursor_y;
+} Editor;
+
+void construct_temp_buffer(Editor *e) {
+    int buf_max_len = 8;
+    char *buf = malloc(buf_max_len);
+
+    for (int r = 0; r < e->rows_count; r++) {
+        
+    }
+}
+
+void disable_raw_mode() {
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+}
+
+void enable_raw_mode() {
+    tcgetattr(STDIN_FILENO, &orig_termios);
+
+    struct termios raw = orig_termios;
+    raw.c_lflag &= ~(ECHO | ICANON);
+
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+}
+
+int main() {
+    enable_raw_mode();
+
+    Editor editor_state = {
+        .rows_count = 1,
+        .def_row_size = 16,
+        .cursor_x = 0, .cursor_y = 0,
+        .rows = malloc(sizeof(b_row) * editor_state.def_row_size),
+    };
+
+    char c;
+    while (read(STDIN_FILENO, &c, 1) == 1 && c != 'q') {
+
+    }
+
+    free(editor_state.rows);
+
+    disable_raw_mode();
+    return 0;
+}

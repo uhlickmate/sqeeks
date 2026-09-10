@@ -34,11 +34,16 @@ bool row_mem_is_full(e_row *row) {
 }
 
 void row_mem_extend(e_row *row, size_t add_bytes) {
-    row->chars = realloc(row->chars, row->mem_size + add_bytes);
+    printf("Memory extended. \n\r");
+    fflush(stdout);
+
+    size_t row_mem_size = row->mem_size + add_bytes;
+    row->chars = realloc(row->chars, row_mem_size);
+    row->mem_size = row_mem_size;
 }
 
 void row_write_char(e_row *row, uint8_t idx, char add) {
-    if (row_mem_is_full(row)) { row_mem_extend(row, 8); }
+    if (row_mem_is_full(row)) { row_mem_extend(row, DEF_ROW_SIZE); }
     row->chars[idx] = add;
     row->len++;
     row->chars[row->len] = '\0';
@@ -65,6 +70,28 @@ void e_append_row(EditorState *state, e_row row) {
     state->rows_count++;
 }
 
+// TODO: realloc buf when too small
+char* e_to_char_buf(EditorState *state) {
+    char *buf = NULL;
+    size_t buf_mem_size = 0;
+
+    for (int row = 0; row < state->rows_count; row++) {
+        size_t row_size = state->rows[row].len;
+        size_t row_total_size = row_size + 2; // additional 2 bytes for \n & \r
+        size_t new_buf_mem_size = buf_mem_size + row_total_size;
+
+        buf = realloc(buf, new_buf_mem_size);
+
+        memcpy(buf + buf_mem_size, state->rows[row].chars, row_size);
+
+        buf_mem_size = new_buf_mem_size;
+
+        // printf("%d %d \n\r", buf_mem_size, row_size);
+    }
+
+    return buf;
+}
+
 typedef enum {
     MODE_STANDARD,
     MODE_EDIT
@@ -78,7 +105,7 @@ typedef enum {
     LKT_ARROW,
 } LastKeyType;
 
-void redraw() {}
+void render(char *buf) {}
 
 void disable_raw_mode() {
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
@@ -111,6 +138,8 @@ int main() {
     e_append_row(&state, init_row);
 
     state.mode = MODE_EDIT;
+
+    char *temp_last_buf;
 
     char c;
     while (read(STDIN_FILENO, &c, 1) == 1 && c != 'q') {
@@ -161,13 +190,19 @@ int main() {
             fflush(stdout);
         }
 
-        redraw(); // TODO
+        // TODO: convert EditorState into a 1D char buffer, write that to terminal
+        char *buf = e_to_char_buf(&state);
+        temp_last_buf = buf;
+        render(buf);
     }
+
+    printf("buffer: %s \n\r", temp_last_buf);
 
 
     for (int row = 0; row < state.rows_count; row++) {
         printf("row %d: %s \n\r", row, state.rows[row].chars);
     }
+
 
     disable_raw_mode();
     return 0;
